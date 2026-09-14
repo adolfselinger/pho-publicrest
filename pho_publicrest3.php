@@ -14,7 +14,13 @@ error_reporting(E_ALL);
 //          Über den GET-Parameter ?bereich=... lässt sich die Anzeige auf einzelne Zonen
 //          einschränken.
 // $zonenFarben: ['zonen-key' => '#hexfarbe', ...] - Anzeigefarbe je Zone.
+// Optional aus config.php: $zeitzone (PHP-Zeitzonenbezeichner, Default 'Europe/Vienna').
 require __DIR__ . '/config.php';
+
+// Explizit setzen statt auf die PHP-Default-Zeitzone des Servers zu vertrauen - sonst
+// kann z.B. der "Aktualisiert"-Zeitstempel um eine Stunde (Winterzeit) oder zwei Stunden
+// (Sommerzeit) daneben liegen, wenn der Server z.B. mit UTC statt Europe/Vienna läuft.
+date_default_timezone_set($zeitzone ?? 'Europe/Vienna');
 
 /**
  * Holt einen OAuth2-Token per Client-Credentials-Flow.

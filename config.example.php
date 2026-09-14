@@ -8,6 +8,11 @@ $clientId     = 'DEIN_CLIENT_ID';
 $clientSecret = 'DEIN_CLIENT_SECRET';
 $tokenUrl     = 'https://www.ph-online.ac.at/ph-bgld/co/public/sec/auth/realms/CAMPUSonline_SP/protocol/openid-connect/token';
 
+// PHP-Zeitzonenbezeichner für alle Datums-/Uhrzeitberechnungen (u.a. den "Aktualisiert"-
+// Zeitstempel und den "schon vorbei"-Filter). Optional - Default ist 'Europe/Vienna'.
+// Nur anpassen, wenn der Standort in einer anderen Zeitzone liegt.
+// $zeitzone = 'Europe/Vienna';
+
 // Akzentfarbe der Oberfläche (Uhrzeit, aktiver Seiten-Punkt, Fortschrittsbalken, Uhr).
 // Optional - fällt ohne Angabe auf ein neutrales Blau zurück.
 $akzentFarbe = '#63b9e9';
