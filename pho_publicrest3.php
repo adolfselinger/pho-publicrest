@@ -3,45 +3,18 @@ ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
-// Zugangsdaten liegen in config.php (nicht im Git-Repo, siehe config.example.php als Vorlage).
+// Zugangsdaten + Standort-Konfiguration (Räume, Zonen-Farben) liegen in config.php
+// (nicht im Git-Repo, siehe config.example.php als Vorlage) - das macht diese Datei
+// selbst generisch wiederverwendbar für andere Standorte/Screens.
+// Erwartet aus config.php: $clientId, $clientSecret, $tokenUrl, $raeume, $zonenFarben.
+//
+// $raeume: Liste von ['resID' => ..., 'roomUid' => ..., 'roomKey' => ..., 'roomInfo' => ...,
+//          'zone' => ...] - resID = Ressourcen-ID der Buchung, roomUid = interne CO-Uid,
+//          roomKey = Raumcode, roomInfo = Anzeigename, zone = Schlüssel aus $zonenFarben.
+//          Über den GET-Parameter ?bereich=... lässt sich die Anzeige auf einzelne Zonen
+//          einschränken.
+// $zonenFarben: ['zonen-key' => '#hexfarbe', ...] - Anzeigefarbe je Zone.
 require __DIR__ . '/config.php';
-
-// Räume: resID = Ressourcen-ID der Buchung, roomUid = interne CO-Uid, roomKey = Raumcode,
-// roomInfo = Anzeigename, zone = Gebäude-/Stockwerk-Bereich laut offiziellem Leitsystem
-// (gruen = EG, blau = 1. Stock/S1-Trakt, orange = 2. Stock/N3+S3-Trakt, lila = 2. Stock/N1-Trakt).
-// Über den GET-Parameter ?bereich=... lässt sich die Anzeige auf einzelne Zonen einschränken.
-$raeume = [
-    ['resID' => 13777, 'roomUid' => 9961, 'roomKey' => 'S3.0.01', 'roomInfo' => 'SR 1',  'zone' => 'gruen'],
-    ['resID' => 13775, 'roomUid' => 7027, 'roomKey' => 'S1.1.01', 'roomInfo' => 'SR 2',  'zone' => 'blau'],
-    ['resID' => 13772, 'roomUid' => 7041, 'roomKey' => 'N1.2.01', 'roomInfo' => 'SR 3',  'zone' => 'lila'],
-    ['resID' => 13771, 'roomUid' => 7071, 'roomKey' => 'N3.2.02', 'roomInfo' => 'SR 5',  'zone' => 'orange'],
-    ['resID' => 13796, 'roomUid' => 7060, 'roomKey' => 'HSLW',    'roomInfo' => 'Hochschullernwerkstätte', 'zone' => 'orange'],
-    ['resID' => 13768, 'roomUid' => 7070, 'roomKey' => 'N3.2.03', 'roomInfo' => 'SR 6',  'zone' => 'orange'],
-    ['resID' => 13766, 'roomUid' => 7069, 'roomKey' => 'N3.2.04', 'roomInfo' => 'SR 7',  'zone' => 'orange'],
-    ['resID' => 13773, 'roomUid' => 7068, 'roomKey' => 'N3.2.05', 'roomInfo' => 'SR 8',  'zone' => 'orange'],
-    ['resID' => 13782, 'roomUid' => 7072, 'roomKey' => 'N1.2.02', 'roomInfo' => 'SR 9',  'zone' => 'lila'],
-    ['resID' => 14870, 'roomUid' => 7075, 'roomKey' => 'N1.2.05', 'roomInfo' => 'SR 10', 'zone' => 'lila'],
-    ['resID' => 14851, 'roomUid' => 7078, 'roomKey' => 'N1.2.06', 'roomInfo' => 'SR 11', 'zone' => 'lila'],
-    ['resID' => 14891, 'roomUid' => 7077, 'roomKey' => 'N1.2.08', 'roomInfo' => 'SR 12', 'zone' => 'lila'],
-    ['resID' => 13724, 'roomUid' => 7066, 'roomKey' => 'N1.2.09', 'roomInfo' => 'eL1',   'zone' => 'lila'],
-    ['resID' => 13767, 'roomUid' => 7065, 'roomKey' => 'N1.2.10', 'roomInfo' => 'eL2',   'zone' => 'lila'],
-    ['resID' => 13776, 'roomUid' => 7059, 'roomKey' => 'N1.2.11', 'roomInfo' => 'eL3',   'zone' => 'lila'],
-    ['resID' => 16113, 'roomUid' => 7079, 'roomKey' => 'N1.2.12', 'roomInfo' => 'SR 15', 'zone' => 'lila'],
-    ['resID' => 14852, 'roomUid' => 7076, 'roomKey' => 'N1.2.13', 'roomInfo' => 'SR 16', 'zone' => 'lila'],
-    ['resID' => 15372, 'roomUid' => 7080, 'roomKey' => 'S3.2.02', 'roomInfo' => 'SR 17', 'zone' => 'orange'],
-    ['resID' => 17035, 'roomUid' => 7116, 'roomKey' => 'S3.2.03', 'roomInfo' => 'SR 18', 'zone' => 'orange'],
-    ['resID' => 17036, 'roomUid' => 7117, 'roomKey' => 'S3.2.04', 'roomInfo' => 'SR 19', 'zone' => 'orange'],
-    ['resID' => 17882, 'roomUid' => 7123, 'roomKey' => 'S3.2.05', 'roomInfo' => 'SR 20', 'zone' => 'orange'],
-    ['resID' => 17883, 'roomUid' => 7124, 'roomKey' => 'S3.2.06', 'roomInfo' => 'SR 21', 'zone' => 'orange'],
-];
-
-// Gültige Zonen-Keys und ihre Anzeigefarbe (muss zum JS-Farbschema unten passen)
-$zonenFarben = [
-    'gruen'  => '#95b53d',
-    'blau'   => '#63b9e9',
-    'orange' => '#ef7c00',
-    'lila'   => '#814997',
-];
 
 /**
  * Holt einen OAuth2-Token per Client-Credentials-Flow.
@@ -383,12 +356,7 @@ $todayFormatted = (new DateTime($today))->format('d.m.Y');
     --border: #2a2f3b;
     --text: #f2f3f5;
     --muted: #9aa2b1;
-    --accent: #d01322;
-
-    --room-n1: #814997;
-    --room-s3: #ef7c00;
-    --room-s1: #63b9e9;
-    --room-n3: #95b53d;
+    --accent: <?php echo htmlspecialchars($akzentFarbe ?? '#63b9e9', ENT_QUOTES, 'UTF-8'); ?>;
     --room-default: #4b5563;
 }
 
@@ -635,10 +603,10 @@ const flipMs = 12000;
 let currentPage = 1;
 let flipTimer = null;
 
-// Farbe kommt direkt aus der Zone des Raums (siehe $zonenFarben in PHP) statt aus dem
-// Raumcode geraten zu werden - das war vorher fehleranfällig (z.B. S3.0.01 vs. S3.2.xx
+// Farbe kommt direkt aus der Zone des Raums (siehe $zonenFarben in config.php) statt aus
+// dem Raumcode geraten zu werden - das war vorher fehleranfällig (z.B. S3.0.01 vs. S3.2.xx
 // haben laut Leitsystem unterschiedliche Farben, obwohl beide mit "S3" beginnen).
-const zonenFarben = { gruen: '#95b53d', blau: '#63b9e9', orange: '#ef7c00', lila: '#814997' };
+const zonenFarben = <?php echo json_encode($zonenFarben); ?>;
 
 function getRoom(resId) {
     const raum = raeume.find(r => r.resID === resId);

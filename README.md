@@ -1,8 +1,14 @@
 # pho-publicrest
 
-Digital-Signage-Anzeige für Raumbelegungen der PH Burgenland, eingebettet als iFrame in
-Xibo unter `intern.ph-burgenland.at/screen/pho_publicrest3.php`. Holt Termine, Kurse und
-Kursgruppen live über die öffentliche CAMPUSonline-REST-API von PH-Online.
+Digital-Signage-Anzeige für Raumbelegungen, eingebettet als iFrame in Xibo (im Einsatz
+bei PH Burgenland unter `intern.ph-burgenland.at/screen/pho_publicrest3.php`). Holt
+Termine, Kurse und Kursgruppen live über die öffentliche CAMPUSonline-REST-API von
+PH-Online.
+
+`pho_publicrest3.php` selbst enthält keine standortspezifischen Daten mehr - Zugangsdaten,
+Raumliste, Zonen-Farben und Akzentfarbe kommen komplett aus `config.php` (siehe
+`config.example.php`). Andere Standorte/Institutionen mit eigenem CAMPUSonline-Zugang
+können die Datei also unverändert übernehmen und nur ihre eigene `config.php` anlegen.
 
 ## Features
 
@@ -19,8 +25,13 @@ Kursgruppen live über die öffentliche CAMPUSonline-REST-API von PH-Online.
 ## Setup
 
 1. `pho_publicrest3.php` und den leeren `cache/`-Ordner in `/screen/` auf dem Server ablegen.
-2. `config.example.php` zu `config.php` kopieren und mit den echten CAMPUSonline-Zugangsdaten
-   (`clientId`, `clientSecret`, `tokenUrl`) befüllen. **`config.php` gehört nicht ins Git-Repo.**
+2. `config.example.php` zu `config.php` kopieren und befüllen:
+   - `clientId`, `clientSecret`, `tokenUrl` - CAMPUSonline-Zugangsdaten
+   - `akzentFarbe` - optionale UI-Akzentfarbe (Uhr, aktive Seite, Fortschrittsbalken)
+   - `raeume` - die eigene Raumliste (siehe Abschnitt "Neuen Raum hinzufügen")
+   - `zonenFarben` - Anzeigefarbe je Zonen-Schlüssel, frei wählbar
+
+   **`config.php` gehört nicht ins Git-Repo** (steht in `.gitignore`).
 3. `cache/` muss für den PHP-Prozess (i.d.R. `www-data`) beschreibbar sein:
    ```bash
    chown -R www-data:www-data cache
@@ -37,7 +48,7 @@ Kursgruppen live über die öffentliche CAMPUSonline-REST-API von PH-Online.
 
 ## Neuen Raum hinzufügen
 
-Im `$raeume`-Array in `pho_publicrest3.php` einen Eintrag ergänzen:
+Im `$raeume`-Array in `config.php` einen Eintrag ergänzen:
 
 ```php
 ['resID' => ..., 'roomUid' => ..., 'roomKey' => '...', 'roomInfo' => '...', 'zone' => 'orange'],
@@ -45,4 +56,4 @@ Im `$raeume`-Array in `pho_publicrest3.php` einen Eintrag ergänzen:
 
 - `resID` = `resource_uid` aus der Appointments-API (z.B. über `room_uid`-Suche an einem
   bekannten Termin des Raums herausfinden)
-- `zone` muss einer der Werte aus `$zonenFarben` sein (`gruen`, `blau`, `orange`, `lila`)
+- `zone` muss einer der Schlüssel aus `$zonenFarben` in `config.php` sein
