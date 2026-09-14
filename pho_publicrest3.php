@@ -15,7 +15,12 @@ error_reporting(E_ALL);
 //          einschränken.
 // $zonenFarben: ['zonen-key' => '#hexfarbe', ...] - Anzeigefarbe je Zone.
 // Optional aus config.php: $zeitzone (PHP-Zeitzonenbezeichner, Default 'Europe/Vienna').
+// Optional aus config.php: $aktuellSchwelleMinuten (Vorlaufzeit für ?aktuell=1, Default 30).
 require __DIR__ . '/config.php';
+
+// Vorlaufzeit (in Minuten) für den ?aktuell=1-Filter - über config.php steuerbar, damit
+// sie nicht pro Screen im Xibo-iFrame-Link, sondern zentral am Standort gepflegt wird.
+$aktuellSchwelleMinuten = $aktuellSchwelleMinuten ?? 30;
 
 // Explizit setzen statt auf die PHP-Default-Zeitzone des Servers zu vertrauen - sonst
 // kann z.B. der "Aktualisiert"-Zeitstempel um eine Stunde (Winterzeit) oder zwei Stunden
@@ -267,6 +272,12 @@ $raeumeSichtbar = empty($aktiveZonen)
     : array_values(array_filter($raeume, fn($r) => in_array($r['zone'], $aktiveZonen, true)));
 $sichtbareResIds = array_map('strval', array_column($raeumeSichtbar, 'resID'));
 
+// Über ?aktuell=1 nur Termine anzeigen, die gerade laufen oder in den nächsten
+// $aktuellSchwelleMinuten Minuten starten (z.B. für einen Flur-Screen direkt vor den
+// Räumen, auf dem eine ganze Tagesliste zu viel wäre). Ohne den Parameter unverändert
+// wie bisher alle noch nicht vorbeigegangenen Termine des Tages.
+$aktuellModus = (($_GET['aktuell'] ?? '') === '1');
+
 // --- Termine, Kursgruppen und Kurse holen (gecacht, siehe ladeRohdaten()) --------------
 $cacheTtlSekunden = 120;
 $rohdaten = ladeRohdaten($raeume, $today, $clientId, $clientSecret, $tokenUrl, $cacheTtlSekunden);
@@ -288,6 +299,10 @@ $zuletztAktualisiert = $rohdaten['cachedAt'];
 $jetzt = $isTestDate
     ? DateTime::createFromFormat('Y-m-d H:i:s', $today . ' ' . date('H:i:s'))
     : new DateTime();
+// Obergrenze für den ?aktuell=1-Filter: alles was bis dahin startet gilt als "läuft schon
+// oder startet bald genug". Einmal außerhalb der Schleife berechnet statt pro Termin neu.
+$aktuellGrenze = $aktuellModus ? (clone $jetzt)->modify('+' . $aktuellSchwelleMinuten . ' minutes') : null;
+
 foreach ($rohdaten['rawAppointments'] as $eintrag) {
     if (!in_array((string) ($eintrag['resourceUId'] ?? ''), $sichtbareResIds, true)) {
         continue;
@@ -295,6 +310,14 @@ foreach ($rohdaten['rawAppointments'] as $eintrag) {
     $ende = safeDate($eintrag['endAt'] ?? null);
     if ($ende !== null && $ende <= $jetzt) {
         continue;
+    }
+    if ($aktuellGrenze !== null) {
+        // Termine mit kaputtem/fehlendem startAt werden NICHT verworfen (siehe endAt oben) -
+        // lieber einmal zu viel anzeigen als eine echte Buchung verschlucken.
+        $start = safeDate($eintrag['startAt'] ?? null);
+        if ($start !== null && $start > $aktuellGrenze) {
+            continue;
+        }
     }
     $appointments[] = $eintrag;
 }
@@ -568,6 +591,9 @@ td.lv .group {
         <?php else: ?>
             <span class="zone-badge">Alle Bereiche</span>
         <?php endif; ?>
+        <?php if ($aktuellModus): ?>
+            <span class="zone-badge">Nur aktuell &amp; in <?php echo (int) $aktuellSchwelleMinuten; ?> Min.</span>
+        <?php endif; ?>
     </h1>
     <div>
         <div class="clock" id="clock"></div>
@@ -604,6 +630,7 @@ const raeume = <?php echo json_encode($raeumeSichtbar); ?>;
 // true, wenn beim Laden etwas schiefging (z.B. CAMPUSonline down und kein Cache mehr
 // verfügbar) - dann heißt eine leere Liste "wir wissen es nicht", nicht "nichts gebucht".
 const datenUnsicher = <?php echo json_encode(!empty($errors)); ?>;
+const aktuellModus = <?php echo json_encode($aktuellModus); ?>;
 const rowsPerPage = 8;
 const flipMs = 12000;
 let currentPage = 1;
@@ -632,7 +659,9 @@ function renderRoomBadge(item) {
 function displayEmptyTable() {
     const text = datenUnsicher
         ? 'Daten derzeit nicht verfügbar'
-        : 'Keine Lehrveranstaltungen mehr geplant';
+        : (aktuellModus
+            ? 'Aktuell keine laufenden oder bald startenden Lehrveranstaltungen'
+            : 'Keine Lehrveranstaltungen mehr geplant');
     document.querySelector('.table-wrap').innerHTML =
         `<div class="empty-state">${text}</div>`;
     document.getElementById('pagination').innerHTML = '';

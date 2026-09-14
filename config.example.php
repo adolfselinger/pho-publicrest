@@ -13,6 +13,11 @@ $tokenUrl     = 'https://www.ph-online.ac.at/ph-bgld/co/public/sec/auth/realms/C
 // Nur anpassen, wenn der Standort in einer anderen Zeitzone liegt.
 // $zeitzone = 'Europe/Vienna';
 
+// Vorlaufzeit in Minuten für den GET-Parameter ?aktuell=1 (zeigt nur Termine, die gerade
+// laufen oder innerhalb dieser Zeit starten - z.B. für einen Flur-Screen direkt vor den
+// Räumen). Optional - Default ist 30.
+// $aktuellSchwelleMinuten = 30;
+
 // Akzentfarbe der Oberfläche (Uhrzeit, aktiver Seiten-Punkt, Fortschrittsbalken, Uhr).
 // Optional - fällt ohne Angabe auf ein neutrales Blau zurück.
 $akzentFarbe = '#63b9e9';
