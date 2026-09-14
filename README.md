@@ -21,6 +21,9 @@ können die Datei also unverändert übernehmen und nur ihre eigene `config.php`
 - `?date=YYYY-MM-DD` – anderen Tag testen (nur zu Testzwecken)
 - `?bereich=orange,lila,...` – nur bestimmte Gebäude-/Stockwerk-Zonen anzeigen (für
   unterschiedliche Screens an unterschiedlichen Standorten)
+- `?aktuell=1` – nur Termine anzeigen, die gerade laufen oder in den nächsten
+  `aktuellSchwelleMinuten` (Default 30, in `config.php` einstellbar) starten - z.B. für
+  einen Flur-Screen direkt vor den Räumen
 
 ## Setup
 
@@ -30,6 +33,7 @@ können die Datei also unverändert übernehmen und nur ihre eigene `config.php`
    - `akzentFarbe` - optionale UI-Akzentfarbe (Uhr, aktive Seite, Fortschrittsbalken)
    - `raeume` - die eigene Raumliste (siehe Abschnitt "Neuen Raum hinzufügen")
    - `zonenFarben` - Anzeigefarbe je Zonen-Schlüssel, frei wählbar
+   - `aktuellSchwelleMinuten` - optionale Vorlaufzeit in Minuten für `?aktuell=1` (Default 30)
 
    **`config.php` gehört nicht ins Git-Repo** (steht in `.gitignore`).
 3. `cache/` muss für den PHP-Prozess (i.d.R. `www-data`) beschreibbar sein:
