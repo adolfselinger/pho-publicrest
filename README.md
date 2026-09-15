@@ -34,6 +34,8 @@ können die Datei also unverändert übernehmen und nur ihre eigene `config.php`
    - `raeume` - die eigene Raumliste (siehe Abschnitt "Neuen Raum hinzufügen")
    - `zonenFarben` - Anzeigefarbe je Zonen-Schlüssel, frei wählbar
    - `aktuellSchwelleMinuten` - optionale Vorlaufzeit in Minuten für `?aktuell=1` (Default 30)
+   - `logoUrl` - optionales Logo oben mittig im Header (Default PH-Burgenland-Logo, leerer
+     String blendet es aus)
 
    **`config.php` gehört nicht ins Git-Repo** (steht in `.gitignore`).
 3. `cache/` muss für den PHP-Prozess (i.d.R. `www-data`) beschreibbar sein:

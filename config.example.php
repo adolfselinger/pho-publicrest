@@ -18,6 +18,10 @@ $tokenUrl     = 'https://www.ph-online.ac.at/ph-bgld/co/public/sec/auth/realms/C
 // Räumen). Optional - Default ist 30.
 // $aktuellSchwelleMinuten = 30;
 
+// Logo oben mittig im Header. Optional - fällt ohne Angabe auf das PH-Burgenland-Logo
+// zurück. Leerer String ('') blendet das Logo aus.
+// $logoUrl = 'https://example.org/logo.svg';
+
 // Akzentfarbe der Oberfläche (Uhrzeit, aktiver Seiten-Punkt, Fortschrittsbalken, Uhr).
 // Optional - fällt ohne Angabe auf ein neutrales Blau zurück.
 $akzentFarbe = '#63b9e9';

@@ -16,11 +16,17 @@ error_reporting(E_ALL);
 // $zonenFarben: ['zonen-key' => '#hexfarbe', ...] - Anzeigefarbe je Zone.
 // Optional aus config.php: $zeitzone (PHP-Zeitzonenbezeichner, Default 'Europe/Vienna').
 // Optional aus config.php: $aktuellSchwelleMinuten (Vorlaufzeit für ?aktuell=1, Default 30).
+// Optional aus config.php: $logoUrl (Logo oben mittig, Default PH-Burgenland-Logo; leerer
+// String blendet das Logo aus).
 require __DIR__ . '/config.php';
 
 // Vorlaufzeit (in Minuten) für den ?aktuell=1-Filter - über config.php steuerbar, damit
 // sie nicht pro Screen im Xibo-iFrame-Link, sondern zentral am Standort gepflegt wird.
 $aktuellSchwelleMinuten = $aktuellSchwelleMinuten ?? 30;
+
+// Logo oben mittig im Header - über config.php austauschbar, damit andere
+// Standorte/Institutionen die Datei unverändert mit ihrem eigenen Logo nutzen können.
+$logoUrl = $logoUrl ?? 'https://www.ph-burgenland.at/fileadmin/template/logo_2023.svg';
 
 // Explizit setzen statt auf die PHP-Default-Zeitzone des Servers zu vertrauen - sonst
 // kann z.B. der "Aktualisiert"-Zeitstempel um eine Stunde (Winterzeit) oder zwei Stunden
@@ -408,9 +414,10 @@ body {
 }
 
 .header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: flex-start;
+    gap: clamp(10px, 1.5vw, 20px);
     margin-bottom: clamp(10px, 1.5vw, 20px);
 }
 
@@ -419,6 +426,17 @@ body {
     font-size: clamp(1.4rem, 2.6vw, 2.2rem);
     font-weight: 700;
     letter-spacing: 0.02em;
+}
+
+.header .logo {
+    grid-column: 2;
+    justify-self: center;
+    height: clamp(24px, 3.4vw, 40px);
+    width: auto;
+}
+
+.header .clock-wrap {
+    grid-column: 3;
 }
 
 .header .clock {
@@ -595,7 +613,10 @@ td.lv .group {
             <span class="zone-badge">Nur aktuell &amp; in <?php echo (int) $aktuellSchwelleMinuten; ?> Min.</span>
         <?php endif; ?>
     </h1>
-    <div>
+    <?php if (!empty($logoUrl)): ?>
+        <img class="logo" src="<?php echo htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Logo">
+    <?php endif; ?>
+    <div class="clock-wrap">
         <div class="clock" id="clock"></div>
         <div class="updated">Aktualisiert: <?php echo htmlspecialchars((new DateTime())->setTimestamp($zuletztAktualisiert)->format('H:i:s'), ENT_QUOTES, 'UTF-8'); ?> Uhr</div>
     </div>
