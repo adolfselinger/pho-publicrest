@@ -433,6 +433,13 @@ body {
     justify-self: center;
     height: clamp(24px, 3.4vw, 40px);
     width: auto;
+    /* Seitenverhältnis des PH-Burgenland-Logos (283.465x49.544) fix vorgeben, damit der
+       Browser die Spaltenbreite schon aus HTML/CSS kennt, statt bis zum Laden des Bilds
+       mit Breite 0 zu rechnen. Sonst verschiebt sich die Spaltenaufteilung im Header erst
+       nachträglich (sobald das - ggf. externe - Bild fertig geladen ist) und der Titel
+       kann dadurch spät auf eine zweite Zeile umbrechen; genau das würde buildPages() in
+       pho_publicrest3.php aus dem Tritt bringen, weil es die Höhe schon vorher gemessen hat. */
+    aspect-ratio: 283.465 / 49.544;
 }
 
 .header .clock-wrap {
@@ -537,6 +544,12 @@ td.lv .group {
     justify-content: center;
     gap: 10px;
     margin-top: clamp(10px, 1.5vw, 18px);
+    /* Immer reservieren, auch ohne Punkte (nur 1 Seite) - sonst wüchse der Footer erst
+       nachträglich, sobald setupPagination() die Punkte einfügt, und der Tabellenbereich
+       (.table-wrap, flex:1) würde entsprechend nachträglich schrumpfen. buildPages() misst
+       den Tabellenbereich aber VOR setupPagination() (die Seitenanzahl steht ja erst nach
+       buildPages() fest) - mit variabler Footer-Höhe wäre das ein Zirkelschluss. */
+    min-height: 10px;
 }
 
 .dot {
@@ -652,10 +665,14 @@ const raeume = <?php echo json_encode($raeumeSichtbar); ?>;
 // verfügbar) - dann heißt eine leere Liste "wir wissen es nicht", nicht "nichts gebucht".
 const datenUnsicher = <?php echo json_encode(!empty($errors)); ?>;
 const aktuellModus = <?php echo json_encode($aktuellModus); ?>;
-const rowsPerPage = 8;
 const flipMs = 12000;
 let currentPage = 1;
 let flipTimer = null;
+// Von buildPages() berechnete Seiteneinteilung: [{start, count}, ...] - Indizes in data.
+// Keine feste "X Zeilen pro Seite", weil lange Titel/Gruppennamen auf mehrere Zeilen
+// umbrechen können (siehe buildPages()); jede Seite bekommt so viele Zeilen, wie mit ihrer
+// tatsächlich gerenderten Höhe in den Tabellenbereich passen.
+let pages = [{ start: 0, count: 0 }];
 
 // Farbe kommt direkt aus der Zone des Raums (siehe $zonenFarben in config.php) statt aus
 // dem Raumcode geraten zu werden - das war vorher fehleranfällig (z.B. S3.0.01 vs. S3.2.xx
@@ -688,27 +705,79 @@ function displayEmptyTable() {
     document.getElementById('pagination').innerHTML = '';
 }
 
+function buildRow(item) {
+    const row = document.createElement('tr');
+    const group = item.groupName ? ` <span class="group">(${item.groupName})</span>` : '';
+    row.innerHTML =
+        `<td class="zeit">${item.von}–${item.bis}</td>` +
+        `<td class="lv">${item.title}${group}</td>` +
+        `<td>${renderRoomBadge(item)}</td>`;
+    return row;
+}
+
 function displayTable(page) {
     const tableBody = document.querySelector('#dataTable tbody');
     if (!tableBody) return;
     tableBody.innerHTML = '';
 
-    const start = (page - 1) * rowsPerPage;
-    const paginatedItems = data.slice(start, start + rowsPerPage);
-
-    paginatedItems.forEach(item => {
-        const row = document.createElement('tr');
-        const group = item.groupName ? ` <span class="group">(${item.groupName})</span>` : '';
-        row.innerHTML =
-            `<td class="zeit">${item.von}–${item.bis}</td>` +
-            `<td class="lv">${item.title}${group}</td>` +
-            `<td>${renderRoomBadge(item)}</td>`;
-        tableBody.appendChild(row);
+    const seite = pages[page - 1] || { start: 0, count: 0 };
+    data.slice(seite.start, seite.start + seite.count).forEach(item => {
+        tableBody.appendChild(buildRow(item));
     });
 }
 
 function pageCount() {
-    return Math.max(1, Math.ceil(data.length / rowsPerPage));
+    return Math.max(1, pages.length);
+}
+
+// Teilt data in Seiten ein, die tatsächlich in den Tabellenbereich passen. Dafür wird pro
+// Seite Zeile für Zeile ins echte <tbody> eingefügt und nach jeder Zeile die tatsächliche
+// Gesamthöhe gemessen - erst wenn sie überläuft, wandert die zuletzt eingefügte Zeile auf
+// die nächste Seite. Eine isolierte Messung einzelner Zeilen (z.B. mit einer Testzeile)
+// würde nicht abbilden, dass lange Titel/Gruppennamen abhängig von Bildschirmbreite und der
+// per clamp() skalierten Schriftgröße auf mehrere Zeilen umbrechen können und dass die
+// letzte Zeile im <tbody> laut CSS keinen unteren Rand hat (siehe "tbody tr:last-child") -
+// beides würde die Höhe pro Zeile leicht verfälschen. Die tatsächliche Höhe im echten
+// Mehrzeilen-Layout zu messen umgeht das und verhindert, dass die letzte Zeile einer Seite
+// abgeschnitten wird (.table-wrap { overflow: hidden }).
+function buildPages() {
+    const tableWrap = document.querySelector('.table-wrap');
+    const table = document.getElementById('dataTable');
+    const thead = table ? table.querySelector('thead') : null;
+    const tbody = table ? table.querySelector('tbody') : null;
+    if (!tableWrap || !thead || !tbody || !Array.isArray(data) || data.length === 0) {
+        return [{ start: 0, count: data.length || 0 }];
+    }
+
+    const verfuegbar = tableWrap.clientHeight - thead.getBoundingClientRect().height;
+    const result = [];
+    let index = 0;
+
+    while (index < data.length) {
+        tbody.innerHTML = '';
+        const seitenStart = index;
+        let count = 0;
+
+        while (index < data.length) {
+            tbody.appendChild(buildRow(data[index]));
+            index++;
+            count++;
+            // Mindestens eine Zeile pro Seite (count > 1 als Bedingung), auch wenn eine
+            // einzelne Zeile (z.B. durch einen sehr langen Titel) allein schon mehr Platz
+            // braucht als verfügbar - lieber einmal überlaufen als eine Seite leer lassen.
+            if (count > 1 && tbody.getBoundingClientRect().height > verfuegbar) {
+                tbody.lastElementChild.remove();
+                index--;
+                count--;
+                break;
+            }
+        }
+
+        result.push({ start: seitenStart, count });
+    }
+
+    tbody.innerHTML = '';
+    return result;
 }
 
 function setupPagination() {
@@ -772,19 +841,46 @@ function tickClock() {
         + ' · ' + now.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    tickClock();
-    setInterval(tickClock, 15000);
-
+function initTable() {
     if (!Array.isArray(data) || data.length === 0) {
         displayEmptyTable();
         return;
     }
 
+    pages = buildPages();
+    currentPage = 1;
     displayTable(currentPage);
     setupPagination();
     updatePagination();
     autoFlipPages();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    tickClock();
+    setInterval(tickClock, 15000);
+
+    // Erst initialisieren, wenn Webfont (Raleway) UND alle Ressourcen (insbesondere das
+    // Logo-Bild) geladen sind oder endgültig fehlgeschlagen sind - vorher gemessene
+    // Höhen wären noch nicht endgültig (Browser rendert bis dahin z.B. mit der
+    // Fallback-Schrift) und buildPages() würde dadurch zu viele Zeilen pro Seite
+    // einplanen; ein späterer Font-Tausch oder eine späte Bild-Breite (siehe
+    // .header .logo { aspect-ratio: ... }, das behebt die Ursache - hier nur ein
+    // zusätzliches Sicherheitsnetz) käme erst danach und würde die letzte Zeile einer
+    // Seite abschneiden (.table-wrap { overflow: hidden }).
+    const seiteFertigGeladen = document.readyState === 'complete'
+        ? Promise.resolve()
+        : new Promise(resolve => window.addEventListener('load', resolve, { once: true }));
+    const schriftBereit = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    Promise.all([seiteFertigGeladen, schriftBereit]).then(initTable, initTable);
+
+    // Bei Größenänderung (anderer Screen/Auflösung, Fenster im Test-Browser) die
+    // Zeilenanzahl neu berechnen - mit kurzem Debounce, damit ein laufendes Resize nicht
+    // ständig neu rendert.
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(initTable, 200);
+    });
 });
 </script>
 </body>

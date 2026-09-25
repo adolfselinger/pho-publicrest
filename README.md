@@ -12,7 +12,8 @@ können die Datei also unverändert übernehmen und nur ihre eigene `config.php`
 
 ## Features
 
-- Automatische Paginierung mit 12s-Umblätterung, dunkles Signage-Design
+- Automatische Paginierung mit 12s-Umblätterung, dunkles Signage-Design - die Zeilenanzahl
+  pro Seite passt sich automatisch an die tatsächliche Bildschirmgröße/-auflösung an
 - Farbcodierte Räume nach Gebäude-/Stockwerk-Zone (siehe Leitsystem der PH)
 - Zeigt sowohl Lehrveranstaltungstermine als auch Direktbuchungen ohne Kursbezug
 - Noch nicht genehmigte LVs (Status ≠ `BF`) werden bewusst nicht angezeigt
